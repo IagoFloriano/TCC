@@ -3,3 +3,4 @@ lex.yy.c
 compilador.tab.*
 */*.o
 compilador
+TabelaSimbolos/teste
