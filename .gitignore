@@ -4,3 +4,4 @@ compilador.tab.*
 */*.o
 compilador
 TabelaSimbolos/teste
+Testes/*.json

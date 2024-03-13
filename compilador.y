@@ -30,6 +30,7 @@ simb simbCallProc;
 simb simbAtribuicao;
 t_conteudo conteudoTemp;
 tabela t;
+tabela permanente;
 pilha rotulos;
 pilha num_vars_p;
 int proxRotulo;
@@ -48,40 +49,48 @@ int strToType(const char *str){
   return indefinido_pas;
 }
 
-void printSimbolo(simb s, int tablevel){
-  for(int i = 0; i < tablevel; i++){printf("\t");}
-  char *tipos[] = {"PROC", "VAR", "PARAM", "LABEL"};
+void printSimbolo(simb s){
+  char *tipos[] = {"procedimento", "variavel", "parametro", "label"};
+  char *linha = (char*)malloc(sizeof(char)*255);
+  char *templinha = (char*)malloc(sizeof(char)*255);
   //    ident  tipo  infos
-  printf("%s\t%s\t",s.identificador,
+  sprintf(linha, "%s, %s, ",s.identificador,
       tipos[s.tipo_simbolo]);
 
   char *tiposVar[] = {"erro","int","bool"};
   switch(s.tipo_simbolo){
     case variavel:
-      printf("%2d, %2d, %s\n",
+      sprintf(templinha, "%2d, %2d, %s",
           s.nivel_lexico, s.conteudo.var.deslocamento, tiposVar[s.conteudo.var.tipo]);
+      strcat(linha, templinha);
       break;
     case procedimento:
-      printf("%2d, %2d, %s, %d\n",
+      sprintf(templinha, "%2d, %2d, %s, %d",
           s.nivel_lexico, s.conteudo.var.deslocamento, tiposVar[s.conteudo.var.tipo],
           s.conteudo.proc.num_parametros);
+      strcat(linha, templinha);
       break;
     case parametro:
-      printf("%2d, %2d, %s, %s\n",
+      sprintf(templinha, "%2d, %2d, %s, %s",
           s.nivel_lexico, s.conteudo.par.deslocamento, tiposVar[s.conteudo.par.tipo],
           s.conteudo.par.tipo_passagem ? "vlr" : "ref");
+      strcat(linha, templinha);
       break;
     case label:
-      printf("\n");
+      //sprintf(templinha, "");
+      //strcat(linha, templinha);
       break;
     default:
-      printf("ERRO\n");
+      sprintf(templinha, "ERRO");
+      strcat(linha, templinha);
   }
+  escreveLinha(linha, s.nivel_lexico);
+  free(linha);
 }
 
 void printTabela(tabela t){
-  for(int i = t.topo; i >= 0; i--){
-    printSimbolo(t.pilha[i], 1);
+  for(int i = 0; i < t.topo; i++){
+    printSimbolo(t.pilha[i]);
   }
 }
 %}
@@ -118,8 +127,8 @@ void printTabela(tabela t){
 
 // REGRA 01
 programa    :{
-             geraCodigo(NULL, "INPP");
              inicializa(&t);
+             inicializa(&permanente);
              pilha_init(&rotulos);
              pilha_init(&num_vars_p);
              pilha_pop(&numProcs);
@@ -130,7 +139,6 @@ programa    :{
              ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
              bloco PONTO {
              pilha_pop(&num_vars_p);
-             geraCodigo(NULL, "PARA");
              }
 ;
 
@@ -138,11 +146,10 @@ programa    :{
 bloco       :
               parte_declara_labels
               {
-                printTabela(t);
+                //printTabela(t);
               }
               parte_declara_vars {
                 sprintf(mepaTemp, "DSVS R%02d", proxRotulo);
-                geraCodigo(NULL, mepaTemp);
                 pilha_push(&rotulos, proxRotulo);
                 proxRotulo++;
 
@@ -152,7 +159,6 @@ bloco       :
                 nivelLexico--;
 
                 sprintf(rotrTemp, "R%02d", pilha_topo(&rotulos));
-                geraCodigo(rotrTemp, "NADA");
                 pilha_pop(&rotulos);
               }
 
@@ -160,7 +166,6 @@ bloco       :
                 sprintf(mepaTemp, "DMEM %d", pilha_topo(&num_vars_p));
                 removeN(&t, pilha_topo(&num_vars_p));
                 pilha_pop(&num_vars_p);
-                geraCodigo(NULL, mepaTemp);
               }
 ;
 
@@ -177,7 +182,8 @@ declara_labels: declara_labels VIRGULA label
 label: NUMERO {
      simboloTemp = criaSimbolo(token, label, nivelLexico, conteudoTemp);
      push(&t, simboloTemp);
-     printTabela(t);
+     push(&permanente, simboloTemp);
+     //printTabela(t);
      }
 ;
 
@@ -186,7 +192,6 @@ parte_declara_vars: {
                   num_vars = 0;
                   } VAR declara_vars {
                     sprintf(mepaTemp, "AMEM %d", num_vars);
-                    geraCodigo(NULL, mepaTemp);
                     pilha_push(&num_vars_p, num_vars);
                   }
                   | {pilha_push(&num_vars_p, 0);}
@@ -209,6 +214,7 @@ declara_var : {}
 tipo        : IDENT {
             tipoAtual = strToType(token);
             atribuiTipo(&t, tipoAtual, qtTipoAtual);
+            atribuiTipo(&permanente, tipoAtual, qtTipoAtual);
             }
 ;
 
@@ -226,6 +232,7 @@ var: IDENT  {
    conteudoTemp.var.deslocamento = num_vars;
    simboloTemp = criaSimbolo(token, variavel, nivelLexico, conteudoTemp);
    push(&t, simboloTemp);
+   push(&permanente, simboloTemp);
    qtTipoAtual++;
    num_vars++;
    }
@@ -246,6 +253,7 @@ declara_proc:
               conteudoTemp.proc.num_parametros = 0;
               simboloTemp = criaSimbolo(token, procedimento, nivelLexico, conteudoTemp);
               push(&t, simboloTemp);
+              push(&permanente, simboloTemp);
               paramsProcAtual = busca(&t, token)->conteudo.proc.lista;
               simbFuncDeclara = busca(&t, token);
               numParamProc = 0;
@@ -254,8 +262,8 @@ declara_proc:
             {
               sprintf(mepaTemp, "ENPR %d", nivelLexico);
               sprintf(rotrTemp, "R%02d", proxRotulo);
-              geraCodigo(rotrTemp, mepaTemp);
               atribuiDeslocamento(&t, numParamProc);
+              atribuiDeslocamento(&permanente, numParamProc);
 
               proxRotulo++;
             }
@@ -264,9 +272,8 @@ declara_proc:
             {
               removeAte(&t, nivelLexico);
               sprintf(mepaTemp, "RTPR %d, %d", nivelLexico, topo(&t).conteudo.proc.num_parametros);
-              geraCodigo(NULL, mepaTemp);
 
-              printTabela(t);
+              //printTabela(t);
             }
 ;
 
@@ -278,8 +285,9 @@ declara_func:
               conteudoTemp.proc.rotulo = proxRotulo;
               conteudoTemp.proc.num_parametros = 0;
               simboloTemp = criaSimbolo(token, procedimento, nivelLexico, conteudoTemp);
-              printSimbolo(simboloTemp, 0);
+              //printSimbolo(simboloTemp, 0);
               push(&t, simboloTemp);
+              push(&permanente, simboloTemp);
               paramsProcAtual = busca(&t, token)->conteudo.proc.lista;
               simbFuncDeclara = busca(&t, token);
               numParamProc = 0;
@@ -288,25 +296,24 @@ declara_func:
             {
               sprintf(mepaTemp, "ENPR %d", nivelLexico);
               sprintf(rotrTemp, "R%02d", proxRotulo);
-              geraCodigo(rotrTemp, mepaTemp);
               atribuiDeslocamento(&t, numParamProc);
+              atribuiDeslocamento(&permanente, numParamProc);
 
               proxRotulo++;
-              printTabela(t);
+              //printTabela(t);
             }
             DOIS_PONTOS
             tipo
             {
               simbFuncDeclara = busca(&t, simbFuncDeclara->identificador);
               simbFuncDeclara->conteudo.proc.tipo_retorno = tipoAtual;
-              printTabela(t);
+              //printTabela(t);
             }
             PONTO_E_VIRGULA
             bloco
             {
               removeAte(&t, nivelLexico);
               sprintf(mepaTemp, "RTPR %d, %d", nivelLexico, topo(&t).conteudo.proc.num_parametros);
-              geraCodigo(NULL, mepaTemp);
 
             }
 ;
@@ -319,19 +326,19 @@ params_formais: ABRE_PARENTESES parametros FECHA_PARENTESES
 ;
 
 parametros: secoes_parametros {
-            printf("\n\n\n");
+            //printf("\n\n\n");
             simbFuncDeclara = busca(&t, simbFuncDeclara->identificador);
-            for(int i = numParamProc-1; i >= 0; i--){
-              printf("%d %d\n", paramsProcAtual[i].tipo, paramsProcAtual[i].tipo_passagem);
-            }
+            //for(int i = numParamProc-1; i >= 0; i--){
+            //  printf("%d %d\n", paramsProcAtual[i].tipo, paramsProcAtual[i].tipo_passagem);
+            //}
             memcpy(simbFuncDeclara->conteudo.proc.lista, paramsProcAtual, numParamProc*sizeof(struct parametro));
-            printTabela(t);
-            for(int i = numParamProc-1; i >= 0; i--){
-              printf("%d %d\n",
-                simbFuncDeclara->conteudo.proc.lista[i].tipo,
-                simbFuncDeclara->conteudo.proc.lista[i].tipo_passagem);
-            }
-            printf("\n\n\n");
+            //printTabela(t);
+            //for(int i = numParamProc-1; i >= 0; i--){
+            //  printf("%d %d\n",
+            //    simbFuncDeclara->conteudo.proc.lista[i].tipo,
+            //    simbFuncDeclara->conteudo.proc.lista[i].tipo_passagem);
+            //}
+            //printf("\n\n\n");
           }
 ;
 
@@ -342,8 +349,8 @@ secoes_parametros:
                        i < numParamProc;
                        i++){
                        paramsProcAtual[i].tipo = tipoAtual;
-                       printf("Tipo atual = %d, tipo salvo = %d\n",
-                       tipoAtual, paramsProcAtual[i].tipo);
+                       //printf("Tipo atual = %d, tipo salvo = %d\n",
+                       //tipoAtual, paramsProcAtual[i].tipo);
                    }
                  }
                  |{qtTipoAtual =0;}
@@ -352,10 +359,10 @@ secoes_parametros:
                        i < numParamProc;
                        i++){
                        paramsProcAtual[i].tipo = tipoAtual;
-                       printf("Tipo atual = %d, tipo salvo = %d\n",
-                       tipoAtual, paramsProcAtual[i].tipo);
+                       //printf("Tipo atual = %d, tipo salvo = %d\n",
+                       //tipoAtual, paramsProcAtual[i].tipo);
                    }
-                   printf("FOI ULTIMO TIPO\n");
+                   //printf("FOI ULTIMO TIPO\n");
                  }
 ;
 
@@ -370,6 +377,7 @@ param: IDENT {
        conteudoTemp.par.tipo_passagem = parVarRef;
        simboloTemp = criaSimbolo(token, parametro, nivelLexico, conteudoTemp);
        push(&t, simboloTemp);
+       push(&permanente, simboloTemp);
        qtTipoAtual++;
        paramsProcAtual[numParamProc].tipo_passagem = parVarRef;
        numParamProc++;
@@ -390,7 +398,6 @@ comandos: comandos PONTO_E_VIRGULA comando
 // REGRA 17
 comando: NUMERO {
         sprintf(mepaTemp, "ENRT %d, %d", nivelLexico, pilha_topo(&num_vars_p));
-        geraCodigo(token, mepaTemp);
        }DOIS_PONTOS comando_sem_rotulo
        | comando_sem_rotulo
 ;
@@ -421,18 +428,16 @@ item_leitura: IDENT
                 exit(1);
               }
               simboloTemp = *simboloPtr;
-              geraCodigo(NULL, "LEIT");
               sprintf(mepaTemp, "ARMZ %d, %d", simboloTemp.nivel_lexico,
                 simboloTemp.conteudo.var.deslocamento);
-              geraCodigo(NULL, mepaTemp);
             }
 ;
 
 escrita: WRITE ABRE_PARENTESES itens_escrita FECHA_PARENTESES
 ;
 
-itens_escrita: itens_escrita VIRGULA expressao {geraCodigo(NULL, "IMPR");}
-             | expressao {geraCodigo(NULL, "IMPR");}
+itens_escrita: itens_escrita VIRGULA expressao {}
+             | expressao {}
 ;
 
 atribuicao_proc_ou_func: IDENT
@@ -472,20 +477,17 @@ atribuicao:
               simbAtribuicao.tipo_simbolo == procedimento){
               sprintf(mepaTemp, "ARMZ %d, %d",
               simbAtribuicao.nivel_lexico, simbAtribuicao.conteudo.var.deslocamento);
-              geraCodigo(NULL, mepaTemp);
             }
             else if (simbAtribuicao.tipo_simbolo == parametro){
               //salvar por valor
               if (simbAtribuicao.conteudo.par.tipo_passagem == valor_par){
                 sprintf(mepaTemp, "ARMZ %d, %d",
                 simbAtribuicao.nivel_lexico, simbAtribuicao.conteudo.var.deslocamento);
-                geraCodigo(NULL, mepaTemp);
               }
               //salvar por referencia
               else {
                 sprintf(mepaTemp, "ARMI %d, %d",
                 simbAtribuicao.nivel_lexico, simbAtribuicao.conteudo.var.deslocamento);
-                geraCodigo(NULL, mepaTemp);
               }
             }
           }
@@ -503,10 +505,8 @@ proc_sem_param:{
                     exit(1);
                 }
                 if (simboloTemp.conteudo.proc.tipo_retorno != indefinido_pas){
-                    geraCodigo(NULL, "AMEM 1");
                 }
                 sprintf(mepaTemp, "CHPR R%02d, %d", simboloTemp.conteudo.proc.rotulo, nivelLexico);
-                geraCodigo(NULL, mepaTemp);
               }
 ;
 
@@ -520,7 +520,6 @@ proc_com_param:
                     exit(1);
                 }
                 if (simbCallProc.conteudo.proc.tipo_retorno){
-                    geraCodigo(NULL, "AMEM 1");
                 }
                 chamandoProc = 1;
               }
@@ -535,7 +534,6 @@ proc_com_param:
                 }
                 sprintf(mepaTemp, "CHPR R%02d, %d", simbCallProc.conteudo.proc.rotulo,
                 nivelLexico);
-                geraCodigo(NULL, mepaTemp);
                 chamandoProc = 0;
               }
               FECHA_PARENTESES
@@ -551,7 +549,6 @@ desvio: GOTO NUMERO {
       simboloTemp = *simboloPtr;
       sprintf(mepaTemp, "DSVR %s, %02d, %d", simboloTemp.identificador,
         simboloTemp.nivel_lexico, nivelLexico);
-      geraCodigo(NULL, mepaTemp);
       }
 ;
 
@@ -564,7 +561,6 @@ comando_condicional:
                       exit(1);
                     }
                     sprintf(mepaTemp, "DSVF R%02d", proxRotulo+1);
-                    geraCodigo(NULL, mepaTemp);
                     // empilha rotulo
                     pilha_push(&rotulos, proxRotulo);
                     proxRotulo+=2;
@@ -572,16 +568,13 @@ comando_condicional:
                   THEN comando_sem_rotulo {
                     // desvia sempre fim else
                     sprintf(mepaTemp, "DSVS R%02d", pilha_topo(&rotulos));
-                    geraCodigo(NULL, mepaTemp);
 
                     // rotulo else
                     sprintf(rotrTemp, "R%02d", pilha_topo(&rotulos)+1);
-                    geraCodigo(rotrTemp, "NADA");
                   }
                   talvez_else {
                     // rotulo fim else
                     sprintf(rotrTemp, "R%02d", pilha_topo(&rotulos));
-                    geraCodigo(rotrTemp, "NADA");
 
                     pilha_pop(&rotulos);
                   }
@@ -595,21 +588,17 @@ talvez_else: ELSE comando_sem_rotulo
 comando_repetitivo: WHILE {
                       pilha_push(&rotulos, proxRotulo);
                       sprintf(rotrTemp, "R%02d", proxRotulo);
-                      geraCodigo(rotrTemp, "NADA");
 
                       proxRotulo += 2;
                     }
                     expressao
                     DO {
                       sprintf(mepaTemp, "DSVF R%02d", pilha_topo(&rotulos)+1);
-                      geraCodigo(NULL, mepaTemp);
                     } comando_sem_rotulo {
                       
                       sprintf(mepaTemp, "DSVS R%02d", pilha_topo(&rotulos));
-                      geraCodigo(NULL, mepaTemp);
                       
                       sprintf(rotrTemp, "R%02d", pilha_topo(&rotulos)+1);
-                      geraCodigo(rotrTemp, "NADA");
 
                       pilha_pop(&rotulos);
                     }
@@ -629,7 +618,6 @@ expressao: expressao_simples { $$ = $1; }
               fprintf(stderr, "COMPILATION ERROR!\n Cannot compare expressions with diferent types\n");
               exit(1);
             }
-            geraCodigo(NULL, $2);
             $$ = boolean_pas;
             }
 ;
@@ -659,11 +647,10 @@ expressao_simples: expressao_simples mais_menos_or termo {
                     }
                     $$ = integer_pas;
                   }
-                  geraCodigo(NULL, $2);
                 }
                 |
                 mais_menos_vazio termo {
-                  printf("%s\n", $1);
+                  //printf("%s\n", $1);
                   if (strcmp($1, "VAZIO")){
                     if ($2 == boolean_pas) {
                       fprintf(stderr, "COMPILATION ERROR!\n Signed variable must be integer\n");
@@ -672,8 +659,6 @@ expressao_simples: expressao_simples mais_menos_or termo {
                   }
                   $$ = $2;
 
-                  if (!strcmp($1, "MENOS"))
-                    geraCodigo(NULL, "INVR");
                 }
 ;
 
@@ -706,7 +691,6 @@ termo: termo vezes_div_and fator
       }
       $$ = $3;
 
-      geraCodigo(NULL, $2);
     }
     | fator { $$ = $1; }
 ;
@@ -722,12 +706,12 @@ fator: variavel_ou_func {
       int passarPara = valor_par;
       if (chamandoProc){
         passarPara = simbCallProc.conteudo.proc.lista[numParamCallProc-1].tipo_passagem;
-        printSimbolo(simbCallProc, 3);
+        //printSimbolo(simbCallProc, 3);
       }
-      printSimbolo(simboloTemp, 0);
-      printf("%d\n",numParamCallProc-1);
-      printf("%d\n",passarPara);
-      printf("%s\n", token);
+      //printSimbolo(simboloTemp, 0);
+      //printf("%d\n",numParamCallProc-1);
+      //printf("%d\n",passarPara);
+      //printf("%s\n", token);
 
       if (ignoraVariavelFunc) {
         ignoraVariavelFunc = 0;
@@ -738,34 +722,28 @@ fator: variavel_ou_func {
           if (passarPara){
             sprintf(mepaTemp, "CRVL %d, %d",
               simboloTemp.nivel_lexico, simboloTemp.conteudo.var.deslocamento);
-            geraCodigo(NULL, mepaTemp);
           }
           // passar pra um q pede por referencia
           else {
             sprintf(mepaTemp, "CREN %d, %d",
               simboloTemp.nivel_lexico, simboloTemp.conteudo.var.deslocamento);
-            geraCodigo(NULL, mepaTemp);
           }
         }
         else if (simboloTemp.tipo_simbolo == procedimento){
           sprintf(mepaTemp, "AMEM 1");
-          geraCodigo(NULL, mepaTemp);
           sprintf(mepaTemp, "CHPR R%02d, %d", simboloTemp.conteudo.proc.rotulo, nivelLexico);
-          geraCodigo(NULL, mepaTemp);
         }
         else if (simboloTemp.tipo_simbolo == parametro){
           //se foi passado por valor
           if (simboloTemp.conteudo.par.tipo_passagem == valor_par){
-            printf("PASSANDO TOKEN %s\n%d\n\n",simboloTemp.identificador,passarPara);
+            //printf("PASSANDO TOKEN %s\n%d\n\n",simboloTemp.identificador,passarPara);
             if(passarPara){
               sprintf(mepaTemp, "CRVL %d, %d",
                 simboloTemp.nivel_lexico, simboloTemp.conteudo.var.deslocamento);
-              geraCodigo(NULL, mepaTemp);
             }
             else{
               sprintf(mepaTemp, "CREN %d, %d",
                 simboloTemp.nivel_lexico, simboloTemp.conteudo.var.deslocamento);
-              geraCodigo(NULL, mepaTemp);
             }
           }
           //se foi passado por referencia
@@ -773,12 +751,10 @@ fator: variavel_ou_func {
             if(passarPara){
               sprintf(mepaTemp, "CRVI %d, %d",
                 simboloTemp.nivel_lexico, simboloTemp.conteudo.var.deslocamento);
-              geraCodigo(NULL, mepaTemp);
             }
             else{
               sprintf(mepaTemp, "CRVL %d, %d",
                 simboloTemp.nivel_lexico, simboloTemp.conteudo.var.deslocamento);
-              geraCodigo(NULL, mepaTemp);
             }
           }
         }
@@ -787,8 +763,7 @@ fator: variavel_ou_func {
     }
     | NUMERO {
       sprintf(mepaTemp, "CRCT %s", token);
-      geraCodigo(NULL, mepaTemp);
-      printf("FATOR NO NUMERO\n");
+      //printf("FATOR NO NUMERO\n");
       $$ = integer_pas;
     }
     | ABRE_PARENTESES expressao FECHA_PARENTESES { $$ = $2; }
@@ -809,7 +784,6 @@ variavel_ou_func: IDENT {
 
 talvez_params_func: ABRE_PARENTESES
                   {
-                   geraCodigo(NULL, "AMEM 1");
                    numParamCallProc = 0;
                    chamandoProc = 1;
                    simbCallProc = simboloTemp;
@@ -817,19 +791,18 @@ talvez_params_func: ABRE_PARENTESES
                   lista_params_reais
                   FECHA_PARENTESES
                   {
-                  printf("FECHA PARAMETROS FUNCAO\n");
+                  //printf("FECHA PARAMETROS FUNCAO\n");
                   chamandoProc = 0;
                   sprintf(mepaTemp, "CHPR R%02d, %d", simbCallProc.conteudo.proc.rotulo, nivelLexico);
-                  geraCodigo(NULL, mepaTemp);
                   ignoraVariavelFunc = 1;
                   }
-                  | {printf("NAO TEM PARAMETROS DE FUNC\n");}
+                  | {/*printf("NAO TEM PARAMETROS DE FUNC\n");*/}
 ;
 
-lista_params_reais: lista_params_reais VIRGULA {printf("COMEÇO EXPRESSAO SIMPLES\n"); numParamCallProc++;}expressao_simples
-                  {printf("FIM DE EXPRESSÃO SIMPLES\n");}
-                  | {printf("COMEÇO EXPRESSAO SIMPLES\n"); numParamCallProc++;}expressao_simples
-                  {printf("FIM DE EXPRESSÃO SIMPLES\n");}
+lista_params_reais: lista_params_reais VIRGULA {/* printf("COMEÇO EXPRESSAO SIMPLES\n");*/ numParamCallProc++;}expressao_simples
+                  {/*printf("FIM DE EXPRESSÃO SIMPLES\n");*/}
+                  | {/*printf("COMEÇO EXPRESSAO SIMPLES\n");*/ numParamCallProc++;}expressao_simples
+                  {/*printf("FIM DE EXPRESSÃO SIMPLES\n");*/}
 ;
 
 %%
@@ -855,7 +828,16 @@ int main (int argc, char** argv) {
  * ------------------------------------------------------------------- */
 
    yyin=fp;
+   char *pathOutput = (char *)malloc(sizeof(char) * 256);
+   strcpy(pathOutput, argv[1]);
+   strcat(pathOutput, ".json");
+   printf("Arquivo de entrada: %s\n", argv[1]);
+   printf("Arquivo de saida: %s\n", pathOutput);
+   configuraArquivo(pathOutput);
    yyparse();
+   printf("permanente.tam: %d\n", permanente.tam);
+   printf("permanente.topo: %d\n", permanente.topo);
+   printTabela(permanente);
 
    return 0;
 }

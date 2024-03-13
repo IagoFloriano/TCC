@@ -26,17 +26,15 @@ simbolos simbolo, relacao;
 char token[TAM_TOKEN];
 
 FILE* fp=NULL;
-void geraCodigo (char* rot, char* comando) {
-
-  if (fp == NULL) {
-    fp = fopen ("MEPA", "w");
+void configuraArquivo(char* path) {
+  if (fp == NULL && path != NULL) {
+    fp = fopen (path, "w");
   }
+}
 
-  if ( rot == NULL ) {
-    fprintf(fp, "     %s\n", comando); fflush(fp);
-  } else {
-    fprintf(fp, "%s: %s \n", rot, comando); fflush(fp);
-  }
+void escreveLinha(char* linha, int ident) {
+  for (int i = 0; i < ident; fprintf(fp, "\t"), i++);
+  fprintf(fp, "%s\n", linha);
 }
 
 int imprimeErro ( char* erro ) {
