@@ -89,7 +89,7 @@ void printSimbolo(simb s){
 }
 
 void printTabela(tabela t){
-  for(int i = 0; i < t.topo; i++){
+  for(int i = 0; i <= t.topo; i++){
     printSimbolo(t.pilha[i]);
   }
 }
