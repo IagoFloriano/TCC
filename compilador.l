@@ -148,6 +148,12 @@ div { simbolo = simb_div;
           return DIV;
  }
 
+mod { simbolo = simb_mod;
+          strncpy (token, yytext, TAM_TOKEN);
+          IMPRIME("mod  ");
+          return MOD;
+ }
+
 and { simbolo = simb_and;
           strncpy (token, yytext, TAM_TOKEN);
           IMPRIME("and  ");

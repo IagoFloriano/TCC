@@ -83,7 +83,6 @@ int printProcs(tabela t, int ip) {
     sprintf(linha, "\"%s\": {", t.pilha[ip].identificador);
     escreveLinha(linha);
     if (t.pilha[ip].conteudo.proc.tipo_retorno) {
-      printf("funcao e nao procedimento\n");
       char *tipo = (char *)malloc(sizeof(char)*20);
       switch (t.pilha[ip].conteudo.proc.tipo_retorno) {
         case integer_pas:
@@ -209,7 +208,7 @@ void printTabela(tabela t) {
 %token OR DIV AND NOT OF VEZES MAIS MENOS
 %token MAIOR MAIOR_IGUAL MENOR MENOR_IGUAL DIFERENTE IGUAL
 %token ABRE_COLCHETES FECHA_COLCHETES ABRE_CHAVES FECHA_CHAVES
-%token WRITE READ
+%token WRITE READ MOD
 
 %union{
    char *str;  // define o tipo str
@@ -789,6 +788,7 @@ termo: termo vezes_div_and fator
 vezes_div_and:
               VEZES { $$ = "MULT"; }
             | DIV { $$ = "DIVI"; }
+            | MOD { $$ = "DIVI"; }
             | AND { $$ = "CONJ"; }
 ;
 
