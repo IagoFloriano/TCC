@@ -32,8 +32,7 @@ void configuraArquivo(char* path) {
   }
 }
 
-void escreveLinha(char* linha, int ident) {
-  for (int i = 0; i < ident; fprintf(fp, "\t"), i++);
+void escreveLinha(char* linha) {
   fprintf(fp, "%s\n", linha);
 }
 

@@ -16,6 +16,7 @@
 
 char mepaTemp[256];
 char rotrTemp[256];
+char *tempIdent;
 int num_vars;
 int qtTipoAtual;
 int tipoAtual;
@@ -26,6 +27,7 @@ simb simboloTemp;
 simb *simboloPtr;
 simb *simbVarProcPtr;
 simb *simbFuncDeclara;
+simb *simbFuncDeclaraP;
 simb simbCallProc;
 simb simbAtribuicao;
 t_conteudo conteudoTemp;
@@ -39,6 +41,7 @@ int numParamCallProc;
 int ignoraVariavelFunc;
 
 struct parametro *paramsProcAtual;
+struct parametro *paramsProcAtualP;
 int parVarRef;
 
 pilha numProcs;
@@ -49,49 +52,152 @@ int strToType(const char *str){
   return indefinido_pas;
 }
 
-void printSimbolo(simb s){
-  char *tipos[] = {"procedimento", "variavel", "parametro", "label"};
-  char *linha = (char*)malloc(sizeof(char)*255);
-  char *templinha = (char*)malloc(sizeof(char)*255);
-  //    ident  tipo  infos
-  sprintf(linha, "%s, %s, ",s.identificador,
-      tipos[s.tipo_simbolo]);
+// retornam índice do último simbolo que foi impresso
+int printLabels(tabela t, int il);
+int printProcs(tabela t, int ip);
+int printVars(tabela t, int iv);
+int printParams(tabela t, int ip);
 
-  char *tiposVar[] = {"erro","int","bool"};
-  switch(s.tipo_simbolo){
-    case variavel:
-      sprintf(templinha, "%2d, %2d, %s",
-          s.nivel_lexico, s.conteudo.var.deslocamento, tiposVar[s.conteudo.var.tipo]);
-      strcat(linha, templinha);
-      break;
-    case procedimento:
-      sprintf(templinha, "%2d, %2d, %s, %d",
-          s.nivel_lexico, s.conteudo.var.deslocamento, tiposVar[s.conteudo.var.tipo],
-          s.conteudo.proc.num_parametros);
-      strcat(linha, templinha);
-      break;
-    case parametro:
-      sprintf(templinha, "%2d, %2d, %s, %s",
-          s.nivel_lexico, s.conteudo.par.deslocamento, tiposVar[s.conteudo.par.tipo],
-          s.conteudo.par.tipo_passagem ? "vlr" : "ref");
-      strcat(linha, templinha);
-      break;
-    case label:
-      //sprintf(templinha, "");
-      //strcat(linha, templinha);
-      break;
-    default:
-      sprintf(templinha, "ERRO");
-      strcat(linha, templinha);
+//             tabela   indice label
+int printLabels(tabela t, int il) {
+  int nivelLex = t.pilha[il].nivel_lexico;
+  char *linha = (char *)malloc(sizeof(char)*TAM_LINHA);
+  sprintf(linha, "\"labels\": [");
+  strcat(linha, "\""); strcat(linha, t.pilha[il].identificador); strcat(linha, "\"");
+  while (il+1 <= t.topo && t.pilha[il+1].tipo_simbolo == label) {
+    il++;
+    strcat(linha, ",\""); strcat(linha, t.pilha[il].identificador); strcat(linha, "\"");
   }
-  escreveLinha(linha, s.nivel_lexico);
-  free(linha);
+  sprintf(linha, "]%c", il+1 > t.topo ? '\0' : ',');
+  escreveLinha(linha);
+  return il;
 }
 
-void printTabela(tabela t){
-  for(int i = 0; i <= t.topo; i++){
-    printSimbolo(t.pilha[i]);
+//             tabela   indice procedimento
+int printProcs(tabela t, int ip) {
+  int nivelLex = t.pilha[ip].nivel_lexico;
+  char *linha = (char *)malloc(sizeof(char)*TAM_LINHA);
+  sprintf(linha, "\"procedimentos\": {");
+  escreveLinha(linha);
+  while(ip <= t.topo && t.pilha[ip].tipo_simbolo == procedimento) {
+    sprintf(linha, "\"%s\": {", t.pilha[ip].identificador);
+    escreveLinha(linha);
+    if (t.pilha[ip].conteudo.proc.tipo_retorno) {
+      printf("funcao e nao procedimento\n");
+      char *tipo = (char *)malloc(sizeof(char)*20);
+      switch (t.pilha[ip].conteudo.proc.tipo_retorno) {
+        case integer_pas:
+          sprintf(tipo, "integer"); break;
+        case boolean_pas:
+          sprintf(tipo, "boolean"); break;
+        default:
+          sprintf(tipo, "desconhecido"); break;
+      }
+      sprintf(linha, "\"tipo_retorno\": \"%s\"", tipo);
+      // se terá mais um atributo nesse procedimento
+      if ( (t.pilha[ip+1].nivel_lexico > nivelLex && t.pilha[ip+1].tipo_simbolo == procedimento) ||
+           (t.pilha[ip+1].nivel_lexico == nivelLex && t.pilha[ip+1].tipo_simbolo != procedimento) )
+           strcat(linha, ",");
+      escreveLinha(linha);
+      free(tipo);
+    }
+    //parametros
+    if (t.pilha[ip+1].nivel_lexico == nivelLex && t.pilha[ip+1].tipo_simbolo == parametro) {
+      ip = printParams(t, ip+1);
+    }
+    //label
+    if (t.pilha[ip+1].nivel_lexico == nivelLex && t.pilha[ip+1].tipo_simbolo == label) {
+      ip = printLabels(t, ip+1);
+    }
+    //var
+    if (t.pilha[ip+1].nivel_lexico == nivelLex && t.pilha[ip+1].tipo_simbolo == variavel) {
+      ip = printVars(t, ip+1);
+    }
+    //procs
+    if (t.pilha[ip+1].nivel_lexico > nivelLex && t.pilha[ip+1].tipo_simbolo == procedimento) {
+      ip = printProcs(t, ip+1);
+    }
+    ip+1 > t.topo && t.pilha[ip].tipo_simbolo != procedimento ? escreveLinha("}") : escreveLinha("},");
   }
+  ip+1 > t.topo ? escreveLinha("}") : escreveLinha("},");
+  return ip;
+}
+
+//             tabela   indice variavel
+int printVars(tabela t, int iv) {
+  int nivelLex = t.pilha[iv].nivel_lexico;
+  char *linha = (char *)malloc(sizeof(char)*TAM_LINHA);
+  sprintf(linha, "\"variaveis\": {");
+  escreveLinha(linha);
+  while (iv <= t.topo && t.pilha[iv].tipo_simbolo == variavel && t.pilha[iv].nivel_lexico == nivelLex) {
+    sprintf(linha, "\"%s\": {", t.pilha[iv].identificador);
+    escreveLinha(linha);
+    //tipo da variavel
+    char *tipo = (char *)malloc(sizeof(char)*20);
+    switch (t.pilha[iv].conteudo.proc.tipo_retorno) {
+      case integer_pas:
+        sprintf(tipo, "integer"); break;
+      case boolean_pas:
+        sprintf(tipo, "boolean"); break;
+      default:
+        sprintf(tipo, "desconhecido"); break;
+    }
+    sprintf(linha, "\"tipo\": \"%s\"", tipo);
+    escreveLinha(linha);
+    iv++;
+    iv > t.topo || t.pilha[iv].tipo_simbolo != variavel ? escreveLinha("}") : escreveLinha("},");
+  }
+  iv > t.topo || t.pilha[iv].nivel_lexico < nivelLex ? escreveLinha("}") : escreveLinha("},");
+  return iv-1;
+}
+
+//             tabela   indice parametro
+int printParams(tabela t, int ip) {
+  int nivelLex = t.pilha[ip].nivel_lexico;
+  char *linha = (char *)malloc(sizeof(char)*TAM_LINHA);
+  sprintf(linha, "\"parametros\": {");
+  escreveLinha(linha);
+  while (ip <= t.topo && t.pilha[ip].tipo_simbolo == parametro && t.pilha[ip].nivel_lexico == nivelLex) {
+    sprintf(linha, "\"%s\": {", t.pilha[ip].identificador);
+    escreveLinha(linha);
+    sprintf(linha, "\"tipo_passagem\": \"%s\",", t.pilha[ip].conteudo.par.tipo_passagem == valor_par ? "valor" : "referencia");
+    escreveLinha(linha);
+    //tipo do parametro
+    char *tipo = (char *)malloc(sizeof(char)*20);
+    switch (t.pilha[ip].conteudo.proc.tipo_retorno) {
+      case integer_pas:
+        sprintf(tipo, "integer"); break;
+      case boolean_pas:
+        sprintf(tipo, "boolean"); break;
+      default:
+        sprintf(tipo, "desconhecido"); break;
+    }
+    sprintf(linha, "\"tipo\": \"%s\"", tipo);
+    escreveLinha(linha);
+    ip++;
+    ip > t.topo || t.pilha[ip].tipo_simbolo != parametro ? escreveLinha("}") : escreveLinha("},");
+  }
+  ip > t.topo || t.pilha[ip].nivel_lexico < nivelLex ? escreveLinha("}") : escreveLinha("},");
+  return ip-1;
+}
+
+void printTabela(tabela t) {
+  escreveLinha("{");
+  for(int i = 0; i <= t.topo; i++){
+    //label
+    if (t.pilha[i].tipo_simbolo == label) {
+      i = printLabels(t, i);
+    }
+    //var
+    else if (t.pilha[i].tipo_simbolo == variavel) {
+      i = printVars(t, i);
+    }
+    //procs
+    else if (t.pilha[i].tipo_simbolo == procedimento) {
+      i = printProcs(t, i);
+    }
+  }
+  escreveLinha("}");
 }
 %}
 
@@ -249,9 +355,12 @@ declara_proc:
               conteudoTemp.proc.num_parametros = 0;
               simboloTemp = criaSimbolo(token, procedimento, nivelLexico, conteudoTemp);
               push(&t, simboloTemp);
-              push(&permanente, simboloTemp);
               paramsProcAtual = busca(&t, token)->conteudo.proc.lista;
               simbFuncDeclara = busca(&t, token);
+
+              push(&permanente, simboloTemp);
+              paramsProcAtualP = busca(&permanente, token)->conteudo.proc.lista;
+              simbFuncDeclaraP = busca(&permanente, token);
               numParamProc = 0;
             }
             talvez_params_formais
@@ -280,9 +389,12 @@ declara_func:
               conteudoTemp.proc.num_parametros = 0;
               simboloTemp = criaSimbolo(token, procedimento, nivelLexico, conteudoTemp);
               push(&t, simboloTemp);
-              push(&permanente, simboloTemp);
               paramsProcAtual = busca(&t, token)->conteudo.proc.lista;
               simbFuncDeclara = busca(&t, token);
+
+              push(&permanente, simboloTemp);
+              paramsProcAtualP = busca(&permanente, token)->conteudo.proc.lista;
+              simbFuncDeclaraP = busca(&permanente, token);
               numParamProc = 0;
             }
             talvez_params_formais
@@ -299,6 +411,9 @@ declara_func:
             {
               simbFuncDeclara = busca(&t, simbFuncDeclara->identificador);
               simbFuncDeclara->conteudo.proc.tipo_retorno = tipoAtual;
+
+              simbFuncDeclaraP = busca(&permanente, simbFuncDeclaraP->identificador);
+              simbFuncDeclaraP->conteudo.proc.tipo_retorno = tipoAtual;
             }
             PONTO_E_VIRGULA
             bloco

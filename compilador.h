@@ -12,6 +12,7 @@
  * ------------------------------------------------------------------- */
 
 #define TAM_TOKEN 16
+#define TAM_LINHA 255
 
 typedef enum simbolos {
   simb_program, simb_var, simb_begin, simb_end,
@@ -44,6 +45,6 @@ extern int nl;
  * ------------------------------------------------------------------- */
 
 void configuraArquivo(char*);
-void escreveLinha(char*, int);
+void escreveLinha(char*);
 int yylex();
 void yyerror(const char *s);
