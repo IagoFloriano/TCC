@@ -435,6 +435,10 @@ parametros: secoes_parametros {
             memcpy(simbFuncDeclara->conteudo.proc.lista,
               paramsProcAtual,
               numParamProc*sizeof(struct parametro));
+            simbFuncDeclaraP = busca(&permanente, simbFuncDeclaraP->identificador);
+            memcpy(simbFuncDeclaraP->conteudo.proc.lista,
+              paramsProcAtualP,
+              numParamProc*sizeof(struct parametro));
           }
 ;
 
@@ -445,6 +449,7 @@ secoes_parametros:
                        i < numParamProc;
                        i++){
                        paramsProcAtual[i].tipo = tipoAtual;
+                       paramsProcAtualP[i].tipo = tipoAtual;
                    }
                  }
                  |{qtTipoAtual =0;}
@@ -453,12 +458,13 @@ secoes_parametros:
                        i < numParamProc;
                        i++){
                        paramsProcAtual[i].tipo = tipoAtual;
+                       paramsProcAtualP[i].tipo = tipoAtual;
                    }
                  }
 ;
 
 lista_de_parametros:
-                   lista_de_parametros VIRGULA talvez_var param {
+                   lista_de_parametros VIRGULA param {
                    }
                    | talvez_var param {
                    }
@@ -471,6 +477,7 @@ param: IDENT {
        push(&permanente, simboloTemp);
        qtTipoAtual++;
        paramsProcAtual[numParamProc].tipo_passagem = parVarRef;
+       paramsProcAtualP[numParamProc].tipo_passagem = parVarRef;
        numParamProc++;
      }
 ;
