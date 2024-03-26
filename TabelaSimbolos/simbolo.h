@@ -12,10 +12,8 @@ enum tipos_simbolo {
   variavel,
   parametro,
   label,
-  enquanto,  //while
-  se,        //if
+  comando,
   chamada,   //chamada de funcao/procedimento
-  inicomando,
   fimcomando
 };
 

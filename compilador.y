@@ -68,6 +68,7 @@ int printLabels(tabela t, int il);
 int printProcs(tabela t, int ip);
 int printVars(tabela t, int iv);
 int printParams(tabela t, int ip);
+int printCommands(tabela t, int ic);
 
 void sprintf_tipo(char *string, int tipo) {
   switch (tipo) {
@@ -135,14 +136,14 @@ int printProcs(tabela t, int ip) {
     if (t.pilha[ip+1].nivel_lexico > nivelLex && t.pilha[ip+1].tipo_simbolo == procedimento) {
       ip = printProcs(t, ip+1);
     }
-    if (t.pilha[ip].tipo_simbolo >= enquanto && t.pilha[ip].tipo_simbolo <= se) {
-      printf("ENCONTRADO WHILE/FOR/IF\n");
-      escreveLinha("\"comandos\": {}");
-      ip++;
+    if (t.pilha[ip+1].nivel_lexico == nivelLex && t.pilha[ip+1].tipo_simbolo == comando) {
+      ip = printCommands(t, ip+1);
     }
     ip++;
+    escreveLinha("fim de um procedimento");
     ip > t.topo || t.pilha[ip].tipo_simbolo != procedimento ? escreveLinha("}") : escreveLinha("},");
   }
+  escreveLinha("fim desse conjunto de procedimentos");
   ip > t.topo ? escreveLinha("}") : escreveLinha("},");
   return ip-1;
 }
@@ -162,8 +163,10 @@ int printVars(tabela t, int iv) {
     sprintf(linha, "\"tipo\": \"%s\"", tipo);
     escreveLinha(linha);
     iv++;
+    escreveLinha("fim de uma variavel");
     iv > t.topo || t.pilha[iv].tipo_simbolo != variavel ? escreveLinha("}") : escreveLinha("},");
   }
+  escreveLinha("fim de um conjunto de variaveis");
   if (iv > t.topo ||
      (t.pilha[iv].nivel_lexico == nivelLex && t.pilha[iv].tipo_simbolo == procedimento) ||
      (t.pilha[iv].nivel_lexico < nivelLex))
@@ -191,8 +194,10 @@ int printParams(tabela t, int ip) {
     sprintf(linha, "\"tipo\": \"%s\"", tipo);
     escreveLinha(linha);
     ip++;
+    escreveLinha("fim de um parametro");
     ip > t.topo || t.pilha[ip].tipo_simbolo != parametro ? escreveLinha("}") : escreveLinha("},");
   }
+  escreveLinha("fim de um conjunto de parametros");
   if (ip > t.topo ||
      (t.pilha[ip].nivel_lexico == nivelLex && t.pilha[ip].tipo_simbolo == procedimento) ||
      (t.pilha[ip].nivel_lexico < nivelLex))
@@ -201,6 +206,32 @@ int printParams(tabela t, int ip) {
           (t.pilha[ip].nivel_lexico > nivelLex && t.pilha[ip].tipo_simbolo == procedimento))
           { escreveLinha("},"); }
   return ip-1;
+}
+
+int printCommands(tabela t, int ic) {
+  int nivelLex = t.pilha[ic].nivel_lexico;
+  char *linha = (char *)malloc(sizeof(char)*TAM_LINHA);
+  escreveLinha("\"comandos\": {");
+  while (ic <= t.topo && t.pilha[ic].nivel_lexico == nivelLex &&
+         t.pilha[ic].tipo_simbolo == comando) {
+    sprintf(linha, "\"%s\": {", t.pilha[ic].identificador);
+    escreveLinha(linha);
+    ic++;
+    if (t.pilha[ic].tipo_simbolo == fimcomando) {
+      ic++;
+      escreveLinha("acabou um comando");
+      if (ic > t.topo || t.pilha[ic].tipo_simbolo == fimcomando) {
+        ic++;
+        escreveLinha("}");
+      }
+      else {
+        escreveLinha("},");
+      }
+    }
+  }
+  escreveLinha("acabou um conjunto de comandos");
+  escreveLinha("}");
+  return ic-1;
 }
 
 void printTabela(tabela t) {
@@ -219,10 +250,8 @@ void printTabela(tabela t) {
       i = printProcs(t, i);
     }
     //comandos
-    else if (t.pilha[i].tipo_simbolo >= enquanto && t.pilha[i].tipo_simbolo <= se) {
-      printf("ENCONTRADO WHILE/FOR/IF\n");
-      escreveLinha("\"comandos\": {}");
-      i++;
+    else if (t.pilha[i].tipo_simbolo == comando) {
+      i = printCommands(t, i);
     }
   }
   escreveLinha("}");
@@ -691,6 +720,10 @@ comando_condicional:
                     // empilha rotulo
                     pilha_push(&rotulos, proxRotulo);
                     proxRotulo+=2;
+
+                    sprintf(commandTemp, "If%03d", counterComandos++);
+                    simboloTempP = criaSimbolo(commandTemp, comando, nivelLexico, conteudoTempP);
+                    push(&permanente, simboloTempP);
                   }
                   THEN comando_sem_rotulo {
                     // desvia sempre fim else
@@ -698,16 +731,30 @@ comando_condicional:
 
                     // rotulo else
                     sprintf(rotrTemp, "R%02d", pilha_topo(&rotulos)+1);
+
                   }
                   talvez_else {
                     // rotulo fim else
                     sprintf(rotrTemp, "R%02d", pilha_topo(&rotulos));
 
                     pilha_pop(&rotulos);
+
+                    sprintf(commandTemp, "null", counterComandos);
+                    simboloTempP = criaSimbolo(commandTemp, fimcomando, nivelLexico, conteudoTempP);
+                    push(&permanente, simboloTempP);
                   }
 ;
 
-talvez_else: ELSE comando_sem_rotulo
+talvez_else: ELSE {
+                    sprintf(commandTemp, "Else%03d", counterComandos++);
+                    simboloTempP = criaSimbolo(commandTemp, comando, nivelLexico, conteudoTempP);
+                    push(&permanente, simboloTempP);
+           }
+           comando_sem_rotulo {
+                    sprintf(commandTemp, "null", counterComandos);
+                    simboloTempP = criaSimbolo(commandTemp, fimcomando, nivelLexico, conteudoTempP);
+                    push(&permanente, simboloTempP);
+           }
            | %prec "lower_than_else"
 ;
 
@@ -717,7 +764,7 @@ comando_repetitivo: WHILE {
                       sprintf(rotrTemp, "R%02d", proxRotulo);
 
                       sprintf(commandTemp, "While%03d", counterComandos++);
-                      simboloTempP = criaSimbolo(commandTemp, enquanto, nivelLexico, conteudoTempP);
+                      simboloTempP = criaSimbolo(commandTemp, comando, nivelLexico, conteudoTempP);
                       push(&permanente, simboloTempP);
 
                       proxRotulo += 2;
@@ -732,6 +779,10 @@ comando_repetitivo: WHILE {
                       sprintf(rotrTemp, "R%02d", pilha_topo(&rotulos)+1);
 
                       pilha_pop(&rotulos);
+
+                      sprintf(commandTemp, "null", counterComandos);
+                      simboloTempP = criaSimbolo(commandTemp, fimcomando, nivelLexico, conteudoTempP);
+                      push(&permanente, simboloTempP);
                     }
 ;
 
@@ -956,7 +1007,6 @@ int main (int argc, char** argv) {
    configuraArquivo(pathOutput);
    yyparse();
    printTabela(permanente);
-   fprintf(stderr, "permanente.topo = %d\n", permanente.topo);
 
    return 0;
 }
