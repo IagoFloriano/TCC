@@ -11,7 +11,12 @@ enum tipos_simbolo {
   procedimento,
   variavel,
   parametro,
-  label
+  label,
+  enquanto,  //while
+  se,        //if
+  chamada,   //chamada de funcao/procedimento
+  inicomando,
+  fimcomando
 };
 
 /* identificadores especificos para variaveis */

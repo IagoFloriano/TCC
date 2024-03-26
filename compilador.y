@@ -16,25 +16,34 @@
 
 char mepaTemp[256];
 char rotrTemp[256];
-char *tempIdent;
+char commandTemp[256];
+
 int num_vars;
 int qtTipoAtual;
 int tipoAtual;
 int nivelLexico;
 int chamandoProc;
 int numParamProc;
+int counterComandos=0;
+
 simb simboloTemp;
+simb simboloTempP;
 simb *simboloPtr;
 simb *simbVarProcPtr;
 simb *simbFuncDeclara;
 simb *simbFuncDeclaraP;
 simb simbCallProc;
 simb simbAtribuicao;
+
 t_conteudo conteudoTemp;
+t_conteudo conteudoTempP;
+
 tabela t;
 tabela permanente;
+
 pilha rotulos;
 pilha num_vars_p;
+
 int proxRotulo;
 int tipoAtual;
 int numParamCallProc;
@@ -126,6 +135,11 @@ int printProcs(tabela t, int ip) {
     if (t.pilha[ip+1].nivel_lexico > nivelLex && t.pilha[ip+1].tipo_simbolo == procedimento) {
       ip = printProcs(t, ip+1);
     }
+    if (t.pilha[ip].tipo_simbolo >= enquanto && t.pilha[ip].tipo_simbolo <= se) {
+      printf("ENCONTRADO WHILE/FOR/IF\n");
+      escreveLinha("\"comandos\": {}");
+      ip++;
+    }
     ip++;
     ip > t.topo || t.pilha[ip].tipo_simbolo != procedimento ? escreveLinha("}") : escreveLinha("},");
   }
@@ -151,7 +165,8 @@ int printVars(tabela t, int iv) {
     iv > t.topo || t.pilha[iv].tipo_simbolo != variavel ? escreveLinha("}") : escreveLinha("},");
   }
   if (iv > t.topo ||
-     (t.pilha[iv].nivel_lexico == nivelLex && t.pilha[iv].tipo_simbolo == procedimento))
+     (t.pilha[iv].nivel_lexico == nivelLex && t.pilha[iv].tipo_simbolo == procedimento) ||
+     (t.pilha[iv].nivel_lexico < nivelLex))
           { escreveLinha("}"); }
   else if (t.pilha[iv].nivel_lexico == nivelLex ||
           (t.pilha[iv].nivel_lexico > nivelLex && t.pilha[iv].tipo_simbolo == procedimento))
@@ -179,7 +194,8 @@ int printParams(tabela t, int ip) {
     ip > t.topo || t.pilha[ip].tipo_simbolo != parametro ? escreveLinha("}") : escreveLinha("},");
   }
   if (ip > t.topo ||
-     (t.pilha[ip].nivel_lexico == nivelLex && t.pilha[ip].tipo_simbolo == procedimento))
+     (t.pilha[ip].nivel_lexico == nivelLex && t.pilha[ip].tipo_simbolo == procedimento) ||
+     (t.pilha[ip].nivel_lexico < nivelLex))
           { escreveLinha("}"); }
   else if (t.pilha[ip].nivel_lexico == nivelLex ||
           (t.pilha[ip].nivel_lexico > nivelLex && t.pilha[ip].tipo_simbolo == procedimento))
@@ -201,6 +217,12 @@ void printTabela(tabela t) {
     //procs
     else if (t.pilha[i].tipo_simbolo == procedimento) {
       i = printProcs(t, i);
+    }
+    //comandos
+    else if (t.pilha[i].tipo_simbolo >= enquanto && t.pilha[i].tipo_simbolo <= se) {
+      printf("ENCONTRADO WHILE/FOR/IF\n");
+      escreveLinha("\"comandos\": {}");
+      i++;
     }
   }
   escreveLinha("}");
@@ -693,6 +715,10 @@ talvez_else: ELSE comando_sem_rotulo
 comando_repetitivo: WHILE {
                       pilha_push(&rotulos, proxRotulo);
                       sprintf(rotrTemp, "R%02d", proxRotulo);
+
+                      sprintf(commandTemp, "While%03d", counterComandos++);
+                      simboloTempP = criaSimbolo(commandTemp, enquanto, nivelLexico, conteudoTempP);
+                      push(&permanente, simboloTempP);
 
                       proxRotulo += 2;
                     }
