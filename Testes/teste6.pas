@@ -5,6 +5,8 @@ var i: integer;
     r: real;
 
     function fi(a, b: integer):integer;
+    var teste: integer;
+        teste2: boolean;
     begin
         fi := a + b;
     end;
@@ -16,12 +18,12 @@ var i: integer;
 
     function fb(a, b: integer):boolean;
     begin
-        fb := a == b;
+        fb := a = b;
     end;
 
     function fr(a, b: real):real;
     begin
-        fr := a + b;
+        fr := a;
     end;
 begin
 end.

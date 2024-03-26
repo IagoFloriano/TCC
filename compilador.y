@@ -126,10 +126,11 @@ int printProcs(tabela t, int ip) {
     if (t.pilha[ip+1].nivel_lexico > nivelLex && t.pilha[ip+1].tipo_simbolo == procedimento) {
       ip = printProcs(t, ip+1);
     }
-    ip+1 > t.topo && t.pilha[ip].tipo_simbolo != procedimento ? escreveLinha("}") : escreveLinha("},");
+    ip++;
+    ip > t.topo || t.pilha[ip].tipo_simbolo != procedimento ? escreveLinha("}") : escreveLinha("},");
   }
-  ip+1 > t.topo ? escreveLinha("}") : escreveLinha("},");
-  return ip;
+  ip > t.topo ? escreveLinha("}") : escreveLinha("},");
+  return ip-1;
 }
 
 //             tabela   indice variavel
@@ -149,7 +150,12 @@ int printVars(tabela t, int iv) {
     iv++;
     iv > t.topo || t.pilha[iv].tipo_simbolo != variavel ? escreveLinha("}") : escreveLinha("},");
   }
-  iv > t.topo || t.pilha[iv].nivel_lexico < nivelLex ? escreveLinha("}") : escreveLinha("},");
+  if (iv > t.topo ||
+     (t.pilha[iv].nivel_lexico == nivelLex && t.pilha[iv].tipo_simbolo == procedimento))
+          { escreveLinha("}"); }
+  else if (t.pilha[iv].nivel_lexico == nivelLex ||
+          (t.pilha[iv].nivel_lexico > nivelLex && t.pilha[iv].tipo_simbolo == procedimento))
+          { escreveLinha("},"); }
   return iv-1;
 }
 
@@ -172,7 +178,12 @@ int printParams(tabela t, int ip) {
     ip++;
     ip > t.topo || t.pilha[ip].tipo_simbolo != parametro ? escreveLinha("}") : escreveLinha("},");
   }
-  ip > t.topo || t.pilha[ip].nivel_lexico < nivelLex ? escreveLinha("}") : escreveLinha("},");
+  if (ip > t.topo ||
+     (t.pilha[ip].nivel_lexico == nivelLex && t.pilha[ip].tipo_simbolo == procedimento))
+          { escreveLinha("}"); }
+  else if (t.pilha[ip].nivel_lexico == nivelLex ||
+          (t.pilha[ip].nivel_lexico > nivelLex && t.pilha[ip].tipo_simbolo == procedimento))
+          { escreveLinha("},"); }
   return ip-1;
 }
 
