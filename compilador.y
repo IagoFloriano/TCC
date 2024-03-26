@@ -49,6 +49,8 @@ pilha numProcs;
 int strToType(const char *str){
   if (!strcmp(str, "integer")) return integer_pas;
   if (!strcmp(str, "boolean")) return boolean_pas;
+  if (!strcmp(str, "char")) return char_pas;
+  if (!strcmp(str, "real")) return real_pas;
   return indefinido_pas;
 }
 
@@ -57,6 +59,21 @@ int printLabels(tabela t, int il);
 int printProcs(tabela t, int ip);
 int printVars(tabela t, int iv);
 int printParams(tabela t, int ip);
+
+void sprintf_tipo(char *string, int tipo) {
+  switch (tipo) {
+    case integer_pas:
+      sprintf(string, "integer"); break;
+    case boolean_pas:
+      sprintf(string, "boolean"); break;
+    case char_pas:
+      sprintf(string, "char"); break;
+    case real_pas:
+      sprintf(string, "real"); break;
+    default:
+      sprintf(string, "%d", tipo); break;
+  }
+}
 
 //             tabela   indice label
 int printLabels(tabela t, int il) {
@@ -84,14 +101,7 @@ int printProcs(tabela t, int ip) {
     escreveLinha(linha);
     if (t.pilha[ip].conteudo.proc.tipo_retorno) {
       char *tipo = (char *)malloc(sizeof(char)*20);
-      switch (t.pilha[ip].conteudo.proc.tipo_retorno) {
-        case integer_pas:
-          sprintf(tipo, "integer"); break;
-        case boolean_pas:
-          sprintf(tipo, "boolean"); break;
-        default:
-          sprintf(tipo, "desconhecido"); break;
-      }
+      sprintf_tipo(tipo, t.pilha[ip].conteudo.proc.tipo_retorno);
       sprintf(linha, "\"tipo_retorno\": \"%s\"", tipo);
       // se terá mais um atributo nesse procedimento
       if ( (t.pilha[ip+1].nivel_lexico > nivelLex && t.pilha[ip+1].tipo_simbolo == procedimento) ||
@@ -133,14 +143,7 @@ int printVars(tabela t, int iv) {
     escreveLinha(linha);
     //tipo da variavel
     char *tipo = (char *)malloc(sizeof(char)*20);
-    switch (t.pilha[iv].conteudo.proc.tipo_retorno) {
-      case integer_pas:
-        sprintf(tipo, "integer"); break;
-      case boolean_pas:
-        sprintf(tipo, "boolean"); break;
-      default:
-        sprintf(tipo, "desconhecido"); break;
-    }
+    sprintf_tipo(tipo, t.pilha[iv].conteudo.proc.tipo_retorno);
     sprintf(linha, "\"tipo\": \"%s\"", tipo);
     escreveLinha(linha);
     iv++;
@@ -163,14 +166,7 @@ int printParams(tabela t, int ip) {
     escreveLinha(linha);
     //tipo do parametro
     char *tipo = (char *)malloc(sizeof(char)*20);
-    switch (t.pilha[ip].conteudo.proc.tipo_retorno) {
-      case integer_pas:
-        sprintf(tipo, "integer"); break;
-      case boolean_pas:
-        sprintf(tipo, "boolean"); break;
-      default:
-        sprintf(tipo, "desconhecido"); break;
-    }
+    sprintf_tipo(tipo, t.pilha[ip].conteudo.proc.tipo_retorno);
     sprintf(linha, "\"tipo\": \"%s\"", tipo);
     escreveLinha(linha);
     ip++;
@@ -923,6 +919,7 @@ int main (int argc, char** argv) {
    configuraArquivo(pathOutput);
    yyparse();
    printTabela(permanente);
+   fprintf(stderr, "permanente.topo = %d\n", permanente.topo);
 
    return 0;
 }

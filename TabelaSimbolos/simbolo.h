@@ -18,7 +18,9 @@ enum tipos_simbolo {
 enum tipos_variavel {
   indefinido_pas = 0,
   integer_pas = 1,
-  boolean_pas = 2
+  boolean_pas = 2,
+  char_pas = 3,
+  real_pas = 4
 };
 
 /* indentificador para se parametro é passado por valor ou referencia */
