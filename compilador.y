@@ -104,8 +104,7 @@ int printLabels(tabela t, int il) {
 int printProcs(tabela t, int ip) {
   int nivelLex = t.pilha[ip].nivel_lexico;
   char *linha = (char *)malloc(sizeof(char)*TAM_LINHA);
-  sprintf(linha, "\"procedimentos\": {");
-  escreveLinha(linha);
+  escreveLinha("\"procedimentos\": {");
   while(ip <= t.topo && t.pilha[ip].tipo_simbolo == procedimento) {
     sprintf(linha, "\"%s\": {", t.pilha[ip].identificador);
     escreveLinha(linha);
@@ -136,14 +135,13 @@ int printProcs(tabela t, int ip) {
     if (t.pilha[ip+1].nivel_lexico > nivelLex && t.pilha[ip+1].tipo_simbolo == procedimento) {
       ip = printProcs(t, ip+1);
     }
+    //comandos
     if (t.pilha[ip+1].nivel_lexico == nivelLex && t.pilha[ip+1].tipo_simbolo == comando) {
       ip = printCommands(t, ip+1);
     }
     ip++;
-    escreveLinha("fim de um procedimento");
     ip > t.topo || t.pilha[ip].tipo_simbolo != procedimento ? escreveLinha("}") : escreveLinha("},");
   }
-  escreveLinha("fim desse conjunto de procedimentos");
   ip > t.topo ? escreveLinha("}") : escreveLinha("},");
   return ip-1;
 }
@@ -163,10 +161,8 @@ int printVars(tabela t, int iv) {
     sprintf(linha, "\"tipo\": \"%s\"", tipo);
     escreveLinha(linha);
     iv++;
-    escreveLinha("fim de uma variavel");
     iv > t.topo || t.pilha[iv].tipo_simbolo != variavel ? escreveLinha("}") : escreveLinha("},");
   }
-  escreveLinha("fim de um conjunto de variaveis");
   if (iv > t.topo ||
      (t.pilha[iv].nivel_lexico == nivelLex && t.pilha[iv].tipo_simbolo == procedimento) ||
      (t.pilha[iv].nivel_lexico < nivelLex))
@@ -174,6 +170,7 @@ int printVars(tabela t, int iv) {
   else if (t.pilha[iv].nivel_lexico == nivelLex ||
           (t.pilha[iv].nivel_lexico > nivelLex && t.pilha[iv].tipo_simbolo == procedimento))
           { escreveLinha("},"); }
+  else    { escreveLinha("}"); }
   return iv-1;
 }
 
@@ -194,10 +191,8 @@ int printParams(tabela t, int ip) {
     sprintf(linha, "\"tipo\": \"%s\"", tipo);
     escreveLinha(linha);
     ip++;
-    escreveLinha("fim de um parametro");
     ip > t.topo || t.pilha[ip].tipo_simbolo != parametro ? escreveLinha("}") : escreveLinha("},");
   }
-  escreveLinha("fim de um conjunto de parametros");
   if (ip > t.topo ||
      (t.pilha[ip].nivel_lexico == nivelLex && t.pilha[ip].tipo_simbolo == procedimento) ||
      (t.pilha[ip].nivel_lexico < nivelLex))
@@ -205,6 +200,7 @@ int printParams(tabela t, int ip) {
   else if (t.pilha[ip].nivel_lexico == nivelLex ||
           (t.pilha[ip].nivel_lexico > nivelLex && t.pilha[ip].tipo_simbolo == procedimento))
           { escreveLinha("},"); }
+  else    { escreveLinha("}"); }
   return ip-1;
 }
 
@@ -217,19 +213,16 @@ int printCommands(tabela t, int ic) {
     sprintf(linha, "\"%s\": {", t.pilha[ic].identificador);
     escreveLinha(linha);
     ic++;
-    if (t.pilha[ic].tipo_simbolo == fimcomando) {
-      ic++;
-      escreveLinha("acabou um comando");
-      if (ic > t.topo || t.pilha[ic].tipo_simbolo == fimcomando) {
-        ic++;
-        escreveLinha("}");
-      }
-      else {
+    while (t.pilha[ic].tipo_simbolo == fimcomando) {
+      if (ic+1 <= t.topo && t.pilha[ic+1].tipo_simbolo != fimcomando && t.pilha[ic+1].tipo_simbolo != procedimento && t.pilha[ic+1].nivel_lexico == nivelLex) {
         escreveLinha("},");
       }
+      else {
+        escreveLinha("}");
+      }
+      ic++;
     }
   }
-  escreveLinha("acabou um conjunto de comandos");
   escreveLinha("}");
   return ic-1;
 }
@@ -569,7 +562,13 @@ comando_sem_rotulo: atribuicao_proc_ou_func
                   |
 ;
 
-leitura: READ ABRE_PARENTESES itens_leitura FECHA_PARENTESES
+leitura: READ ABRE_PARENTESES itens_leitura FECHA_PARENTESES {
+                  sprintf(commandTemp, "Leitura%03d", counterComandos++);
+                  simboloTempP = criaSimbolo(commandTemp, comando, nivelLexico, conteudoTempP);
+                  push(&permanente, simboloTempP);
+                  simboloTempP = criaSimbolo("null", fimcomando, nivelLexico, conteudoTempP);
+                  push(&permanente, simboloTempP);
+       }
 ;
 
 itens_leitura: itens_leitura VIRGULA item_leitura | item_leitura
@@ -589,7 +588,13 @@ item_leitura: IDENT
             }
 ;
 
-escrita: WRITE ABRE_PARENTESES itens_escrita FECHA_PARENTESES
+escrita: WRITE ABRE_PARENTESES itens_escrita FECHA_PARENTESES {
+                  sprintf(commandTemp, "Escrita%03d", counterComandos++);
+                  simboloTempP = criaSimbolo(commandTemp, comando, nivelLexico, conteudoTempP);
+                  push(&permanente, simboloTempP);
+                  simboloTempP = criaSimbolo("null", fimcomando, nivelLexico, conteudoTempP);
+                  push(&permanente, simboloTempP);
+       }
 ;
 
 itens_escrita: itens_escrita VIRGULA expressao {}
@@ -607,6 +612,8 @@ atribuicao_proc_ou_func: IDENT
                        }
                        a_continua
                        {
+                        simboloTempP = criaSimbolo("null", fimcomando, nivelLexico, conteudoTempP);
+                        push(&permanente, simboloTempP);
                        }
 ;
 
@@ -614,9 +621,21 @@ a_continua:
           {
             simbAtribuicao = *simbVarProcPtr;
           }
-          ATRIBUICAO atribuicao
-          | proc_sem_param
-          | proc_com_param
+          ATRIBUICAO atribuicao {
+                        sprintf(commandTemp, "Atribuicao%03d", counterComandos++);
+                        simboloTempP = criaSimbolo(commandTemp, comando, nivelLexico, conteudoTempP);
+                        push(&permanente, simboloTempP);
+          }
+          | proc_sem_param {
+                        sprintf(commandTemp, "ChamaProcedimento%03d", counterComandos++);
+                        simboloTempP = criaSimbolo(commandTemp, comando, nivelLexico, conteudoTempP);
+                        push(&permanente, simboloTempP);
+          }
+          | proc_com_param {
+                        sprintf(commandTemp, "ChamaProcedimento%03d", counterComandos++);
+                        simboloTempP = criaSimbolo(commandTemp, comando, nivelLexico, conteudoTempP);
+                        push(&permanente, simboloTempP);
+          }
 ;
 
 
@@ -823,18 +842,23 @@ expressao_simples: expressao_simples mais_menos_or termo {
                     $$ = boolean_pas;
                   }
                   else {
-                    if($1 != integer_pas || $3 != integer_pas){
-                      fprintf(stderr, "COMPILATION ERROR!\n Operation + and - must be between two integers\n");
+                    if( ($1 != integer_pas && $1 != real_pas) || ($3 != integer_pas && $3 != real_pas) ){
+                      fprintf(stderr, "COMPILATION ERROR!\n Operation + and - must be between two numbers\n");
                       exit(1);
                     }
-                    $$ = integer_pas;
+                    if ($1 == real_pas || $3 == real_pas) {
+                      $$ = real_pas;
+                    }
+                    else {
+                      $$ = integer_pas;
+                    }
                   }
                 }
                 |
                 mais_menos_vazio termo {
                   if (strcmp($1, "VAZIO")){
                     if ($2 == boolean_pas) {
-                      fprintf(stderr, "COMPILATION ERROR!\n Signed variable must be integer\n");
+                      fprintf(stderr, "COMPILATION ERROR!\n Signed variable must be number\n");
                       exit(1);
                     }
                   }

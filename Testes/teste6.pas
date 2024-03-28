@@ -23,7 +23,7 @@ var i: integer;
 
     function fr(a, b: real):real;
     begin
-        fr := a;
+        fr := a + b;
     end;
 begin
 end.
