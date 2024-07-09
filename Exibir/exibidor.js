@@ -1,3 +1,5 @@
+import Arvore from './arvore.js';
+
 var input = ' { ' +
 ' "variaveis": { ' +
 ' "n": { ' +
