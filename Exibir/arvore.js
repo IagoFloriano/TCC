@@ -8,21 +8,21 @@ class Arvore {
     this.largura = 0;
     this.larguras = [];
     this.matriz = [];
+    this.raiz = {};
   }
 
   // entrada sendo uma string em formato json
-  constroi(entrada) {
-    let obj = JSON.parse(entrada);
-
-    if (obj.hasOwnProperty("comandos")) {
-      this.raiz = new No("Program", 0);
-      this.altura = this.raiz.processaObj(obj["comandos"]);
+  constroi(entrada, nome) {
+    if (!entrada.hasOwnProperty("comandos")) {
+      return;
     }
+    this.raiz = new No(nome, 0, null);
+    this.altura = this.raiz.processaObj(entrada["comandos"]);
     this.larguras = this.raiz.calculaLarguras();
     console.log(this.larguras);
     this.largura = Math.max(...this.larguras);
     for (let i = 0; i <= this.altura; i++) {
-      this.matriz.push(new Array(this.largura));
+      this.matriz.push(new Array(this.largura*2));
     }
     this.raiz.posMaisEsquerda(this.matriz);
     console.log(this.matriz);
@@ -39,17 +39,19 @@ class No {
   filhos = [];
   altura;
   largura = -1;
+  pai = {};
 
-  constructor(comando, altura) {
+  constructor(comando, altura, pai) {
     this.comando = comando;
     this.altura = altura;
+    this.pai = pai;
   }
 
   processaObj(obj) {
     let subcomandos = Object.keys(obj);
     let alturaRetorno = this.altura;
     subcomandos.forEach((chave) => {
-      let novoFilho = new No(chave, this.altura + 1);
+      let novoFilho = new No(chave, this.altura + 1, this);
       let novaAltura = novoFilho.processaObj(obj[chave]);
       alturaRetorno = novaAltura > alturaRetorno ? novaAltura : alturaRetorno;
       this.filhos.push(novoFilho);
@@ -70,7 +72,7 @@ class No {
   posMaisEsquerda(matriz) {
     let i = 0;
     while (!!(matriz[this.altura][i])) {
-      i++;
+      i+=2;
     }
     matriz[this.altura][i] = this;
     this.largura = i;

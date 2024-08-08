@@ -40,9 +40,20 @@ var input = ' { ' +
 ' } ';
 
 function main(input) {
+  let obj = JSON.parse(input);
   let arv = new Arvore();
-  arv.constroi(input);
+  arv.constroi(obj, "Program");
   arv.imprimePreOrdem();
+  let procs = [];
+  let procsObjs = Object.keys(obj["procedimentos"]);
+  procsObjs.forEach((procedimento) => {
+    console.log(procedimento);
+    let novaArv = new Arvore();
+    novaArv.constroi(obj["procedimentos"][procedimento], procedimento);
+    procs.push(novaArv);
+    novaArv.imprimePreOrdem();
+  });
+  console.log(procs);
 }
 
 // Cuida dos valores da linha de comando
