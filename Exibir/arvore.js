@@ -9,6 +9,8 @@ class Arvore {
     this.larguras = [];
     this.matriz = [];
     this.raiz = {};
+    this.x = 0;
+    this.y = 0;
   }
 
   // entrada sendo uma string em formato json
