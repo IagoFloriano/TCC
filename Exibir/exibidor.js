@@ -1,4 +1,4 @@
-// import Arvore from './arvore.js';
+const lerp = (x, y, a) => x * (1 - a) + y * a;
 
 var input = ' { ' +
 ' "variaveis": { ' +
@@ -10,8 +10,7 @@ var input = ' { ' +
 ' "collatzStep": { ' +
 ' "tipo_retorno": "integer", ' +
 ' "parametros": { ' +
-' "n": { ' +
-' "tipo_passagem": "valor", ' +
+' "n": { ' + ' "tipo_passagem": "valor", ' +
 ' "tipo": "integer" ' +
 ' } ' +
 ' }, ' +
@@ -39,7 +38,7 @@ var input = ' { ' +
 ' } ' +
 ' } ';
 
-function main(input) {
+function processaArvore(input) {
   let obj = JSON.parse(input);
   let arv = new Arvore();
   arv.constroi(obj, "Program");
@@ -47,20 +46,43 @@ function main(input) {
   let procs = [];
   let procsObjs = Object.keys(obj["procedimentos"]);
   procsObjs.forEach((procedimento) => {
-    console.log(procedimento);
     let novaArv = new Arvore();
     novaArv.constroi(obj["procedimentos"][procedimento], procedimento);
     procs.push(novaArv);
     novaArv.imprimePreOrdem();
   });
-  console.log(procs);
+  return [arv, procs];
 }
 
-// Cuida dos valores da linha de comando
-main(input);
-//if (process.argv.length != 3) {
-//  console.log(`Uso correto: node ${process.argv[1].split('/').reverse()[0]} <entrada.json>`);
-//}
-//else {
-//  main(process.argv[2])
-//}
+function desenhaCirculo(x, y, ctx) {
+  ctx.strokeStyle = 'rgb(0,0,0)';
+  ctx.beginPath();
+  ctx.arc(x, y, 20, 0, 2 * Math.PI);
+  ctx.stroke();
+}
+
+$(document).ready(() => {
+  const canvas = document.getElementById('canvas');
+  let w = window.innerWidth; const ctx = canvas.getContext('2d');
+  let h = window.innerHeight;
+  canvas.width = w * 0.9;
+  canvas.height = h * 0.9;
+
+  let [arv, procs] = processaArvore(input);
+
+  let [matriz, altura, largura] = [arv.matriz, arv.altura, arv.largura];
+
+  console.log(matriz);
+  console.log(altura);
+  console.log(largura);
+  for(let i = 0; i < matriz.length; i++) {
+    for(let j = 0; j < matriz[i].length; j++) {
+      let x = lerp(0, w, j/(matriz[i].length-1)) + 20;
+      let y = lerp(0, h, i/(matriz.length)) + 20;
+      if(matriz[i][j] != undefined) {
+        desenhaCirculo(x, y, ctx);
+      }
+    }
+  }
+
+});

@@ -19,17 +19,17 @@ class Arvore {
     this.raiz = new No(nome, 0, null);
     this.altura = this.raiz.processaObj(entrada["comandos"]);
     this.larguras = this.raiz.calculaLarguras();
-    console.log(this.larguras);
+    // console.log(this.larguras);
     this.largura = Math.max(...this.larguras);
     for (let i = 0; i <= this.altura; i++) {
       this.matriz.push(new Array(this.largura*2));
     }
     this.raiz.posMaisEsquerda(this.matriz);
-    console.log(this.matriz);
+    // console.log(this.matriz);
   }
 
   imprimePreOrdem() {
-    console.log(`${this.altura}x${this.largura}`);
+    // console.log(`${this.altura}x${this.largura}`);
     this.raiz.imprimePreOrdem();
   }
 }
@@ -98,7 +98,7 @@ class No {
 
   imprimePreOrdem() {
     let tabs = "";
-    console.log(`${this.comando.substring(0,this.comando.length-3)}(${this.altura}x${this.largura})`);
+    // console.log(`${this.comando.substring(0,this.comando.length-3)}(${this.altura}x${this.largura})`);
     this.filhos.forEach((filho) => filho.imprimePreOrdem());
   }
 }
