@@ -55,12 +55,14 @@ function gerenciaArquivo(evt) {
 function exibeArvore(input) {
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
-  let w = window.innerWidth * 0.99;
-  let h = window.innerHeight * 0.95;
-  canvas.width = w;
-  canvas.height = h;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  let w = canvas.width;
+  let h = canvas.height;
 
   let [arv, procs] = processaArvore(input);
+
+  const titulo = document.getElementById('titulo');
+  titulo.innerHTML = arv.raiz.comando;
 
   let [matriz, altura, largura] = [arv.matriz, arv.altura, arv.largura];
 
@@ -100,4 +102,8 @@ function exibeArvore(input) {
 $(document).ready(() => {
   const upArquivo = document.getElementById('input');
   upArquivo.addEventListener("change", gerenciaArquivo, false);
+
+  const canvas = document.getElementById('canvas');
+  canvas.width = window.innerWidth * 0.99;
+  canvas.height = window.innerHeight * 0.95;
 });
