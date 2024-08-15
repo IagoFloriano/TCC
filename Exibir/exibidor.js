@@ -1,18 +1,19 @@
 const lerp = (x, y, a) => x * (1 - a) + y * a;
+let pilha = [];
+let lista = document.getElementById('procedimentos');
+let procToChange = {};
 
-function processaArvore(input) {
-  let obj = JSON.parse(input);
+function processaArvore(obj, nome) {
   let arv = new Arvore();
-  arv.constroi(obj, "Program");
+  arv.constroi(obj, nome);
   arv.imprimePreOrdem();
   let procs = [];
-  let procsObjs = Object.keys(obj["procedimentos"]);
-  procsObjs.forEach((procedimento) => {
-    let novaArv = new Arvore();
-    novaArv.constroi(obj["procedimentos"][procedimento], procedimento);
-    procs.push(novaArv);
-    novaArv.imprimePreOrdem();
-  });
+  if (obj.hasOwnProperty("procedimentos")) {
+    let procsObjs = Object.keys(obj["procedimentos"]);
+    procsObjs.forEach((procedimento) => {
+      procs.push({nome: procedimento, obj: obj["procedimentos"][procedimento]});
+    });
+  }
   return [arv, procs];
 }
 
@@ -46,23 +47,50 @@ function gerenciaArquivo(evt) {
   const reader = new FileReader();
 
   reader.addEventListener("load", () => {
-    exibeArvore(reader.result);
+    pilha = [];
+    while (lista.firstChild) lista.removeChild(lista.firstChild);
+    let obj = JSON.parse(reader.result);
+    pilha.push({obj: obj, nome: "Program"});
+    exibeArvore();
   }, false);
 
   reader.readAsText(file);
 }
 
-function exibeArvore(input) {
+function desempilha() {
+  if (pilha.length == 0) return;
+  const input = pilha.pop();
+  exibeArvore();
+}
+
+function exibeProc() {
+  while (lista.firstChild) lista.removeChild(lista.firstChild);
+  pilha.push({obj: pilha[pilha.length-1].procs[this.id].obj, nome: pilha[pilha.length-1].procs[this.id].nome});
+  exibeArvore();
+}
+
+function exibeArvore() {
+  const input = pilha[pilha.length-1].obj;
+  const nome = pilha[pilha.length-1].nome;
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   let w = canvas.width;
   let h = canvas.height;
 
-  let [arv, procs] = processaArvore(input);
+  let [arv, procs] = processaArvore(input, nome);
+  pilha[pilha.length-1].procs = procs;
+
+  for (let i = 0; i < procs.length; i++) {
+    let novo = document.createElement('li');
+    novo.innerHTML = `<button id="${i}">${procs[i].nome}</button>`;
+    lista.appendChild(novo);
+    let btnnovo = document.getElementById(`${i}`);
+    btnnovo.onclick = exibeProc;
+  }
 
   const titulo = document.getElementById('titulo');
-  titulo.innerHTML = arv.raiz.comando;
+  titulo.innerHTML = nome;
 
   let [matriz, altura, largura] = [arv.matriz, arv.altura, arv.largura];
 
