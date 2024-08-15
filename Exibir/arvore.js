@@ -24,10 +24,11 @@ class Arvore {
     // console.log(this.larguras);
     this.largura = Math.max(...this.larguras);
     for (let i = 0; i <= this.altura; i++) {
-      this.matriz.push(new Array(this.largura*2));
+      this.matriz.push(new Array(this.largura));
     }
     this.raiz.posMaisEsquerda(this.matriz);
-    // console.log(this.matriz);
+    this.raiz.calculaBarycenter();
+    this.raiz.balanceaMatriz(this.matriz);
   }
 
   imprimePreOrdem() {
@@ -42,6 +43,7 @@ class No {
   altura;
   largura = -1;
   pai = {};
+  barycenter = -1;
 
   constructor(comando, altura, pai) {
     this.comando = comando;
@@ -74,13 +76,33 @@ class No {
   posMaisEsquerda(matriz) {
     let i = 0;
     while (!!(matriz[this.altura][i])) {
-      i+=2;
+      i++;
     }
     matriz[this.altura][i] = this;
     this.largura = i;
     this.filhos.forEach((filho) => {
       filho.posMaisEsquerda(matriz);
     });
+  }
+
+  calculaBarycenter(){
+    this.barycenter = this.pai ? this.pai.largura : 0;
+    this.filhos.forEach((filho) => {
+      filho.calculaBarycenter();
+    });
+  }
+
+  balanceaMatriz(matriz) {
+    this.filhos.forEach((filho) => {
+      filho.balanceaMatriz(matriz);
+    });
+
+    if (this.filhos) {
+      for(let i = 0; i < this.filhos.length; i++) {
+        this.filhos[i].barycenter = this.barycenter + (i-this.largura);
+      }
+    }
+
   }
 
   somaArrays(a, b) {
